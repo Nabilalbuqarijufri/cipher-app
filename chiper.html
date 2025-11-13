@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vigenère & Atbash Cipher</title>
+  <style>
+    body {
+      font-family: Inter, system-ui, -apple-system, Roboto, Arial;
+      background: #f4f6fb;
+      margin: 0;
+      padding: 28px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #2b6ef6;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 600;
+      color: #333;
+    }
+    textarea, input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #e6e9f2;
+      margin-top: 6px;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 0;
+      background: #2b6ef6;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .result {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #fbfcff;
+      border: 1px solid #eef2ff;
+      white-space: pre-wrap;
+      min-height: 60px;
+    }
+    .process {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f9fafc;
+      border: 1px solid #e6e9f2;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #e0e3ef;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    th {
+      background: #f3f6ff;
+    }
+    .back {
+      display: inline-block;
+      background: #4b5563;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      text-decoration: none;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    .back:hover {
+      background: #1f2937;
+    }
+    footer {
+      text-align: center;
+      font-size: 13px;
+      color: #777;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back">⬅ Kembali</a>
+    <h1>🔐 Pilihan Cipher: Vigenère & Atbash</h1>
+
+    <label for="cipherType">Pilih Jenis Cipher</label>
+    <select id="cipherType">
+      <option value="vigenere">Vigenère Cipher</option>
+      <option value="atbash">Atbash Cipher</option>
+    </select>
+
+    <label for="textInput">Teks</label>
+    <textarea id="textInput" rows="5" placeholder="Masukkan teks di sini..."></textarea>
+
+    <div id="vigenereOptions">
+      <label for="keyInput">Kunci (A–Z)</label>
+      <input type="text" id="keyInput" placeholder="Contoh: RAHASIA">
+
+      <label for="modeSelect">Mode</label>
+      <select id="modeSelect">
+        <option value="enc">Enkripsi</option>
+        <option value="dec">Deskripsi</option>
+      </select>
+    </div>
+
+    <div id="atbashOptions" style="display:none;">
+      <label for="atbashMode">Mode</label>
+      <select id="atbashMode">
+        <option value="enc">Enkripsi</option>
+        <option value="dec">Deskripsi</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button id="runBtn">Jalankan</button>
+      <button id="copyBtn">Salin</button>
+      <button id="clearBtn">Bersihkan</button>
+    </div>
+
+    <label>Hasil</label>
+    <div id="resultBox" class="result"></div>
+
+    <div id="processBox" class="process"></div>
+
+    <footer>© 2025 — Alat Sandi: Vigenère & Atbash Cipher</footer>
+  </div>
+
+  <script>
+    const cipherType = document.getElementById('cipherType');
+    const vigenereOptions = document.getElementById('vigenereOptions');
+    const atbashOptions = document.getElementById('atbashOptions');
+    const resultBox = document.getElementById('resultBox');
+    const processBox = document.getElementById('processBox');
+
+    cipherType.addEventListener('change', () => {
+      vigenereOptions.style.display = (cipherType.value === 'vigenere') ? 'block' : 'none';
+      atbashOptions.style.display = (cipherType.value === 'atbash') ? 'block' : 'none';
+      processBox.innerHTML = '';
+    });
+
+    function cleanKey(k){return (k||'').toUpperCase().replace(/[^A-Z]/g,'');}
+    function isLetter(ch){return /[A-Z]/.test(ch);}
+
+    // 🔸 Fungsi Vigenere
+    function vigenere(text, key, mode){
+      key = cleanKey(key);
+      if(!key) return {result:'⚠️ Kunci kosong atau tidak valid.', process:[]};
+      let out='', ki=0, process=[];
+      const K = key.split('').map(c => c.charCodeAt(0)-65);
+      for(let ch of text){
+        let up = ch.toUpperCase();
+        if(isLetter(up)){
+          let t = up.charCodeAt(0)-65;
+          let shift = K[ki % K.length];
+          let v, rumus;
+          if(mode === 'enc') {
+            v = (t + shift) % 26;
+            rumus = `${up} (${t}) + ${key[ki % key.length]} (${shift}) = ${String.fromCharCode(v+65)} (${v})`;
+          } else {
+            v = (t - shift + 26) % 26;
+            rumus = `${up} (${t}) - ${key[ki % key.length]} (${shift}) = ${String.fromCharCode(v+65)} (${v})`;
+          }
+          let c = String.fromCharCode(v+65);
+          c = (ch===ch.toLowerCase())?c.toLowerCase():c;
+          out += c; 
+          process.push({
+            huruf: ch,
+            kunci: key[ki % key.length],
+            nilaiTeks: t,
+            nilaiKunci: shift,
+            hasil: c,
+            rumus
+          });
+          ki++;
+        } else {
+          out += ch;
+        }
+      }
+      return {result: out, process};
+    }
+
+    // 🔹 Fungsi Atbash
+    function atbash(text){
+      const A='A'.charCodeAt(0);
+      let out='', process=[];
+      for(let ch of text){
+        if(/[A-Z]/.test(ch)){
+          let c=ch.charCodeAt(0)-A;
+          let hasil=String.fromCharCode(A+(25-c));
+          out += hasil;
+          process.push({
+            huruf: ch,
+            hasil,
+            rumus: `${ch} (${c}) → ${hasil} (${25-c})`
+          });
+        } else if(/[a-z]/.test(ch)){
+          let c=ch.toUpperCase().charCodeAt(0)-A;
+          let hasil=String.fromCharCode(A+(25-c)).toLowerCase();
+          out += hasil;
+          process.push({
+            huruf: ch,
+            hasil,
+            rumus: `${ch.toUpperCase()} (${c}) → ${hasil.toUpperCase()} (${25-c})`
+          });
+        } else {
+          out += ch;
+        }
+      }
+      return {result: out, process};
+    }
+
+    // 🔸 Tampilkan proses
+    function showProcessVigenere(proc){
+      if(proc.length===0){ processBox.innerHTML=''; return; }
+      let html = `<table><tr><th>Huruf</th><th>Kunci</th><th>Nilai Huruf</th><th>Nilai Kunci</th><th>Hasil</th><th>Rumus</th></tr>`;
+      for(let p of proc){
+        html += `<tr>
+          <td>${p.huruf}</td>
+          <td>${p.kunci}</td>
+          <td>${p.nilaiTeks}</td>
+          <td>${p.nilaiKunci}</td>
+          <td>${p.hasil}</td>
+          <td>${p.rumus}</td>
+        </tr>`;
+      }
+      html += `</table>`;
+      processBox.innerHTML = html;
+    }
+
+    function showProcessAtbash(proc){
+      if(proc.length===0){ processBox.innerHTML=''; return; }
+      let html = `<table><tr><th>Huruf</th><th>Hasil</th><th>Rumus</th></tr>`;
+      for(let p of proc){
+        html += `<tr><td>${p.huruf}</td><td>${p.hasil}</td><td>${p.rumus}</td></tr>`;
+      }
+      html += `</table>`;
+      processBox.innerHTML = html;
+    }
+
+    // 🔸 Jalankan cipher
+    document.getElementById('runBtn').addEventListener('click', ()=>{
+      const text = document.getElementById('textInput').value;
+      const type = cipherType.value;
+      let result = '', processData;
+
+      if(type === 'vigenere'){
+        const key = document.getElementById('keyInput').value;
+        const mode = document.getElementById('modeSelect').value;
+        const out = vigenere(text, key, mode);
+        result = out.result;
+        processData = out.process;
+        showProcessVigenere(processData);
+      } else {
+        const mode = document.getElementById('atbashMode').value;
+        const out = atbash(text);
+        result = `(${mode === 'enc' ? 'Enkripsi' : 'Deskripsi'}) → ${out.result}`;
+        processData = out.process;
+        showProcessAtbash(processData);
+      }
+
+      resultBox.textContent = result;
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async ()=>{
+      if(!resultBox.textContent) return alert('Tidak ada hasil untuk disalin.');
+      await navigator.clipboard.writeText(resultBox.textContent);
+      alert('Hasil tersalin ke clipboard!');
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', ()=>{
+      document.getElementById('textInput').value = '';
+      document.getElementById('keyInput').value = '';
+      resultBox.textContent = '';
+      processBox.innerHTML = '';
+    });
+
+    vigenereOptions.style.display = 'block';
+  </script>
+</body>
+</html>
